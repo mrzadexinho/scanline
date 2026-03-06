@@ -1,0 +1,56 @@
+{
+  "name": "scanline-mcp",
+  "version": "0.1.0",
+  "description": "Security scanning MCP server — semgrep integration, SARIF parsing, and finding triage for Claude Code",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "scanline": "./dist/mcp/server.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "dev": "tsc --watch",
+    "mcp": "node dist/mcp/server.js",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "security",
+    "semgrep",
+    "sarif",
+    "static-analysis",
+    "scanning",
+    "claude",
+    "ai"
+  ],
+  "author": "Idris Idriszade",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrzadexinho/scanline.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mrzadexinho/scanline/issues"
+  },
+  "homepage": "https://github.com/mrzadexinho/scanline#readme"
+}
