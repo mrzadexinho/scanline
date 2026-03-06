@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { checkSemgrepInstalled, checkSemgrepPro, runSemgrep } from '../../semgrep/runner.js';
-import { detectLanguagesFromFiles, selectRulesets } from '../../semgrep/detector.js';
+import { detectLanguagesFromFiles, selectRulesetsWithFrameworks, detectFrameworks } from '../../semgrep/detector.js';
 import { parseSarif } from '../../sarif/parser.js';
 import { triageFindings, summarizeTriage } from '../../triage/engine.js';
 import { readFileSync, readdirSync, statSync } from 'fs';
@@ -58,12 +58,18 @@ export function registerScanTools(server: McpServer): void {
 
       const usePro = await checkSemgrepPro();
 
-      // Auto-detect languages if no rulesets provided
+      // Auto-detect languages and frameworks if no rulesets provided
       let selectedRulesets = rulesets;
       if (!selectedRulesets || selectedRulesets.length === 0) {
         const files = collectFiles(target);
         const languages = detectLanguagesFromFiles(files);
-        selectedRulesets = selectRulesets(languages.map(l => l.language));
+        const frameworks = detectFrameworks(files, (path) => {
+          try { return readFileSync(path, 'utf-8'); } catch { return null; }
+        });
+        selectedRulesets = selectRulesetsWithFrameworks(
+          languages.map(l => l.language),
+          frameworks
+        );
       }
 
       const result = await runSemgrep({
@@ -131,14 +137,20 @@ export function registerScanTools(server: McpServer): void {
 
   server.tool(
     'detect_languages',
-    'Detect programming languages in a directory and suggest semgrep rulesets.',
+    'Detect programming languages and frameworks in a directory and suggest semgrep rulesets.',
     {
       target: z.string().describe('Path to directory to analyze'),
     },
     async ({ target }) => {
       const files = collectFiles(target);
       const languages = detectLanguagesFromFiles(files);
-      const rulesets = selectRulesets(languages.map(l => l.language));
+      const frameworks = detectFrameworks(files, (path) => {
+        try { return readFileSync(path, 'utf-8'); } catch { return null; }
+      });
+      const rulesets = selectRulesetsWithFrameworks(
+        languages.map(l => l.language),
+        frameworks
+      );
 
       return {
         content: [{
@@ -149,6 +161,11 @@ export function registerScanTools(server: McpServer): void {
               language: l.language,
               fileCount: l.fileCount,
               extensions: l.extensions,
+            })),
+            frameworks: frameworks.map(f => ({
+              framework: f.framework,
+              confidence: f.confidence,
+              detectedBy: f.detectedBy,
             })),
             suggestedRulesets: rulesets,
           }, null, 2),

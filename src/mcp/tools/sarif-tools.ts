@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { parseSarif, deduplicateFindings, mergeSarifLogs } from '../../sarif/parser.js';
+import { parseSarif, deduplicateFindings } from '../../sarif/parser.js';
+import { diffFindings, formatDiffReport } from '../../sarif/diff.js';
 import { triageFindings, summarizeTriage } from '../../triage/engine.js';
 import { readFileSync } from 'fs';
 
@@ -161,6 +162,62 @@ export function registerSarifTools(server: McpServer): void {
           }, null, 2),
         }],
       };
+    }
+  );
+
+  server.tool(
+    'diff_sarif',
+    'Compare two SARIF scans to find new, fixed, and unchanged findings. Use for regression checking.',
+    {
+      baseline: z.string().describe('Baseline SARIF (file path or JSON string)'),
+      current: z.string().describe('Current SARIF (file path or JSON string)'),
+    },
+    async ({ baseline, current }) => {
+      const readSarif = (input: string): string => {
+        if (input.trim().startsWith('{')) return input;
+        return readFileSync(input, 'utf-8');
+      };
+
+      try {
+        const baselineFindings = deduplicateFindings(parseSarif(readSarif(baseline)));
+        const currentFindings = deduplicateFindings(parseSarif(readSarif(current)));
+
+        const diff = diffFindings(baselineFindings, currentFindings);
+
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              summary: diff.summary,
+              newFindings: diff.newFindings.map(f => ({
+                rule: f.ruleId,
+                level: f.level,
+                message: f.message,
+                file: f.filePath,
+                line: f.startLine,
+              })),
+              fixedFindings: diff.fixedFindings.map(f => ({
+                rule: f.ruleId,
+                level: f.level,
+                message: f.message,
+                file: f.filePath,
+                line: f.startLine,
+              })),
+              report: formatDiffReport(diff),
+            }, null, 2),
+          }],
+        };
+      } catch (error: unknown) {
+        return {
+          content: [{
+            type: 'text' as const,
+            text: JSON.stringify({
+              error: 'Failed to diff SARIF files',
+              details: (error as Error).message,
+            }),
+          }],
+        };
+      }
     }
   );
 }

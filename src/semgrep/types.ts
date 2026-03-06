@@ -72,3 +72,36 @@ export const DEFAULT_RULESETS: Record<string, string[]> = {
   swift: ['p/swift'],
   csharp: ['p/csharp'],
 };
+
+export type Framework =
+  | 'django'
+  | 'flask'
+  | 'fastapi'
+  | 'react'
+  | 'nextjs'
+  | 'angular'
+  | 'express'
+  | 'spring'
+  | 'rails'
+  | 'laravel'
+  | 'symfony';
+
+export interface FrameworkDetection {
+  framework: Framework;
+  confidence: number;
+  detectedBy: string;
+}
+
+export const FRAMEWORK_RULESETS: Record<Framework, string> = {
+  django: 'p/django',
+  flask: 'p/flask',
+  fastapi: 'p/fastapi',
+  react: 'p/react',
+  nextjs: 'p/nextjs',
+  angular: 'p/angular',
+  express: 'p/express',
+  spring: 'p/spring',
+  rails: 'p/rails',
+  laravel: 'p/laravel',
+  symfony: 'p/symfony',
+};

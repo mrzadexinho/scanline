@@ -159,10 +159,134 @@ export const deadCodeRule: TriageRule = {
   },
 };
 
+export const inputValidationRule: TriageRule = {
+  name: 'input-validated',
+  check(context: TriageContext): TriageRuleResult | null {
+    const { finding, sourceLines } = context;
+    const lineIdx = finding.startLine - 1;
+
+    if (lineIdx < 0 || lineIdx >= sourceLines.length) return null;
+
+    // Check 20 lines before the finding for sanitization/validation patterns
+    const lookback = 20;
+    const start = Math.max(0, lineIdx - lookback);
+    const precedingCode = sourceLines.slice(start, lineIdx).join('\n').toLowerCase();
+
+    const validationPatterns = [
+      // Sanitization functions
+      /sanitize[_a-z]*\s*\(/,
+      /escape[_a-z]*\s*\(/,
+      /encode[_a-z]*\s*\(/,
+      /clean[_a-z]*\s*\(/,
+      /strip[_a-z]*\s*\(/,
+      /purify\s*\(/,
+      /htmlspecialchars\s*\(/,
+      /dompurify/,
+      // Validation checks
+      /validate[_a-z]*\s*\(/,
+      /isvalid[_a-z]*\s*\(/,
+      /is_valid[_a-z]*\s*\(/,
+      /check[_a-z]*\s*\(/,
+      /verify[_a-z]*\s*\(/,
+      // Type coercion / parsing (safe conversion)
+      /parseint\s*\(/,
+      /parsefloat\s*\(/,
+      /number\s*\(/,
+      /int\s*\(/,
+      /float\s*\(/,
+      // Schema validation
+      /\.parse\s*\(/,
+      /\.safeParse\s*\(/,
+      /zod/,
+      /joi\./,
+      /yup\./,
+      /ajv/,
+      // Parameterized queries (SQL)
+      /\?\s*,/,
+      /\$\d+/,
+      /%s/,
+      /placeholder/,
+      // ORM usage (usually safe)
+      /\.where\s*\(\s*\{/,
+      /\.findone\s*\(/,
+      /\.findmany\s*\(/,
+      /\.create\s*\(\s*\{/,
+      /prisma\./,
+      /sequelize\./,
+      /typeorm/,
+    ];
+
+    if (validationPatterns.some(p => p.test(precedingCode))) {
+      return {
+        verdict: 'false_positive',
+        reason: 'Input appears sanitized/validated upstream (within 20 lines)',
+        confidence: 70,
+      };
+    }
+
+    return null;
+  },
+};
+
+export const unreachableCodeRule: TriageRule = {
+  name: 'unreachable-code',
+  check(context: TriageContext): TriageRuleResult | null {
+    const { finding, sourceLines } = context;
+    const lineIdx = finding.startLine - 1;
+
+    if (lineIdx < 0 || lineIdx >= sourceLines.length) return null;
+
+    // Check if the finding is inside a block that's gated by a constant false condition
+    const lookback = 10;
+    const start = Math.max(0, lineIdx - lookback);
+    const precedingLines = sourceLines.slice(start, lineIdx);
+
+    for (const line of precedingLines) {
+      const trimmed = line.trim().toLowerCase();
+
+      // Feature flag / constant false guards
+      if (
+        /if\s*\(\s*false\s*\)/.test(trimmed) ||
+        /if\s*\(\s*0\s*\)/.test(trimmed) ||
+        /if\s+false\s*:/.test(trimmed) ||
+        /if\s*\(\s*!?\s*enabled\s*\)/.test(trimmed) ||
+        /if\s*\(\s*process\.env\./.test(trimmed) && /===?\s*['"]/.test(trimmed)
+      ) {
+        return {
+          verdict: 'uncertain',
+          reason: 'Finding may be behind a feature flag or conditional guard',
+          confidence: 50,
+        };
+      }
+
+      // Early return / throw before the finding
+      if (
+        /^\s*(return|throw|process\.exit|sys\.exit)\b/.test(line) &&
+        !/^\s*(\/\/|#|\/\*|\*)/.test(line) // not a comment
+      ) {
+        // Check if return is at same or higher indentation level
+        const returnIndent = line.search(/\S/);
+        const findingIndent = sourceLines[lineIdx].search(/\S/);
+        if (returnIndent <= findingIndent) {
+          return {
+            verdict: 'false_positive',
+            reason: 'Unreachable: early return/throw before finding at same scope level',
+            confidence: 75,
+          };
+        }
+      }
+    }
+
+    return null;
+  },
+};
+
 export const defaultTriageRules: TriageRule[] = [
   testFileRule,
   exampleFileRule,
   suppressionCommentRule,
   generatedFileRule,
   deadCodeRule,
+  inputValidationRule,
+  unreachableCodeRule,
 ];
