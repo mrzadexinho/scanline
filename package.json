@@ -1,5 +1,5 @@
 {
-  "name": "scanline-mcp",
+  "name": "@mrzadexinho/scanline",
   "version": "0.1.0",
   "description": "Security scanning MCP server — semgrep integration, SARIF parsing, and finding triage for Claude Code",
   "type": "module",

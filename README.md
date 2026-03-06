@@ -1,10 +1,10 @@
 # scanline
 
 [![CI](https://github.com/mrzadexinho/scanline/actions/workflows/ci.yml/badge.svg)](https://github.com/mrzadexinho/scanline/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/scanline-mcp.svg)](https://www.npmjs.com/package/scanline-mcp)
+[![npm version](https://img.shields.io/npm/v/@mrzadexinho/scanline.svg)](https://www.npmjs.com/package/@mrzadexinho/scanline)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-Security scanning MCP server. Semgrep integration, SARIF parsing, and automated finding triage for Claude Code.
+Security scanning MCP server. Semgrep integration, SARIF parsing, and automated finding triage.
 
 ## Problem
 
@@ -12,14 +12,16 @@ Security scanners produce noisy output. scanline wraps semgrep with automatic la
 
 ## Quick Start
 
-### As MCP Server (Claude Code)
+### As MCP Server
+
+Works with any MCP-compatible client — **Claude Code**, Claude Desktop, Cursor, Windsurf, VS Code (Copilot), Continue.dev, Zed, Cline, and more.
 
 ```json
 {
   "mcpServers": {
     "scanline": {
       "command": "npx",
-      "args": ["-y", "scanline-mcp"]
+      "args": ["-y", "@mrzadexinho/scanline"]
     }
   }
 }
@@ -28,7 +30,7 @@ Security scanners produce noisy output. scanline wraps semgrep with automatic la
 ### As Library
 
 ```typescript
-import { parseSarif, triageFindings, summarizeTriage } from 'scanline-mcp';
+import { parseSarif, triageFindings, summarizeTriage } from '@mrzadexinho/scanline';
 import { readFileSync } from 'fs';
 
 // Parse SARIF from any scanner
